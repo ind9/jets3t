@@ -164,8 +164,8 @@ public class RestS3Service extends S3Service implements SignedUrlHandler {
         CredentialsProvider credentialsProvider, Jets3tProperties jets3tProperties) 
         throws S3ServiceException 
     {
-        this(awsCredentials, invokingApplicationDescription, credentialsProvider, 
-            jets3tProperties, new HostConfiguration());        
+        this(awsCredentials, invokingApplicationDescription, credentialsProvider,
+                jets3tProperties, new HostConfiguration());
     }
     
     /**
@@ -437,7 +437,11 @@ public class RestS3Service extends S3Service implements SignedUrlHandler {
     public void setCredentialsProvider(CredentialsProvider credentialsProvider) {
         this.credentialsProvider = credentialsProvider;
     }
-    
+
+    protected void performRequest(HttpMethodBase httpMethod, int expectedResponseCode)
+            throws S3ServiceException {
+        performRequest(httpMethod, new int[]{expectedResponseCode});
+    }
     /**
      * Performs an HTTP/S request by invoking the provided HttpMethod object. If the HTTP
      * response code doesn't match the expected value, an exception is thrown.
@@ -453,14 +457,14 @@ public class RestS3Service extends S3Service implements SignedUrlHandler {
      *        occurred, this exception may contain additional error information available from an XML
      *        error response document.  
      */
-    protected void performRequest(HttpMethodBase httpMethod, int expectedResponseCode) 
+    protected void performRequest(HttpMethodBase httpMethod, int[] expectedResponseCodes)
         throws S3ServiceException 
     {
         try {
             if (log.isDebugEnabled()) {
                 log.debug("Performing " + httpMethod.getName() 
                     + " request for '" + httpMethod.getURI().toString() 
-                    + "', expecting response code " + expectedResponseCode);
+                    + "', expecting response code " + expectedResponseCodes);
             }
             
             // Variables to manage S3 Internal Server 500 or 503 Service Unavailable errors.
@@ -514,11 +518,17 @@ public class RestS3Service extends S3Service implements SignedUrlHandler {
                         + ", Headers: " + Arrays.asList(httpMethod.getResponseHeaders()));
                 }
                         
-                // Check we received the expected result code.
-                if (responseCode != expectedResponseCode) {
+                // Check we received the expected result code
+                boolean didReceiveExpectedResponseCode = false;
+                for (int i = 0; i < expectedResponseCodes.length && !didReceiveExpectedResponseCode; i++) {
+                    if (responseCode == expectedResponseCodes[i]) {
+                        didReceiveExpectedResponseCode = true;
+                    }
+                }
+                if (!didReceiveExpectedResponseCode) {
                     if (log.isWarnEnabled()) {
                         log.warn("Response '" + httpMethod.getPath() + "' - Unexpected response code " 
-                            + responseCode + ", expected " + expectedResponseCode);
+                            + responseCode + ", expected " + expectedResponseCodes);
                     }
                                         
                     if (Mimetypes.MIMETYPE_XML.equals(contentType)
@@ -805,12 +815,12 @@ public class RestS3Service extends S3Service implements SignedUrlHandler {
         // Add all request headers.
         addRequestHeadersToConnection(httpMethod, requestHeaders);
         
-        int expectedStatusCode = 200;
+        int[] expectedStatusCodes = {200};
         if (requestHeaders != null && requestHeaders.containsKey("Range")) {
             // Partial data responses have a status code of 206. 
-            expectedStatusCode = 206;
+            expectedStatusCodes = new int[] {200, 206};
         }
-        performRequest(httpMethod, expectedStatusCode);
+        performRequest(httpMethod, expectedStatusCodes);
         
         return httpMethod;
     }
