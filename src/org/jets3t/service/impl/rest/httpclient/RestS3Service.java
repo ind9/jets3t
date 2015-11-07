@@ -464,7 +464,7 @@ public class RestS3Service extends S3Service implements SignedUrlHandler {
             if (log.isDebugEnabled()) {
                 log.debug("Performing " + httpMethod.getName() 
                     + " request for '" + httpMethod.getURI().toString() 
-                    + "', expecting response code " + expectedResponseCodes);
+                    + "', expecting response code " + Arrays.toString(expectedResponseCodes));
             }
             
             // Variables to manage S3 Internal Server 500 or 503 Service Unavailable errors.
@@ -528,7 +528,7 @@ public class RestS3Service extends S3Service implements SignedUrlHandler {
                 if (!didReceiveExpectedResponseCode) {
                     if (log.isWarnEnabled()) {
                         log.warn("Response '" + httpMethod.getPath() + "' - Unexpected response code " 
-                            + responseCode + ", expected " + expectedResponseCodes);
+                            + responseCode + ", expected " + Arrays.toString(expectedResponseCodes));
                     }
                                         
                     if (Mimetypes.MIMETYPE_XML.equals(contentType)
